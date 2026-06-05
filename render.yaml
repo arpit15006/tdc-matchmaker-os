@@ -1,0 +1,43 @@
+# Render Blueprint — one-click deploy for the TDC Matchmaker OS API + database.
+#
+# In Render: New ▸ Blueprint ▸ connect this repo. Render reads this file from the
+# repo root, provisions a free Postgres instance, wires DATABASE_URL automatically,
+# builds the API, runs migrations, and seeds the demo data (200 profiles + login).
+#
+# After the first deploy you only need to set two secrets in the dashboard:
+#   • GROQ_API_KEY  — free key from https://console.groq.com/keys (enables AI features)
+#   • CLIENT_ORIGIN — your Vercel frontend URL, e.g. https://tdc-matchmaker.vercel.app
+
+databases:
+  - name: tdc-matchmaker-db
+    plan: free
+    databaseName: tdc_matchmaker
+    user: tdc
+
+services:
+  - type: web
+    name: tdc-matchmaker-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    # --include=dev forces tsc/prisma/tsx to install even though NODE_ENV=production
+    # (Render sets it), which npm would otherwise use to skip devDependencies.
+    buildCommand: npm install --include=dev && npx prisma migrate deploy && npm run build && npm run db:seed
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tdc-matchmaker-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      # Set these two in the Render dashboard (not synced from the blueprint).
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false

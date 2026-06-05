@@ -1,0 +1,275 @@
+// TDC Matchmaker OS — Prisma schema
+// Postgres (Neon / Supabase). Run: prisma migrate dev
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+/// The 10-stage matchmaking funnel, in journey order.
+enum FunnelStage {
+  PROFILE_REVIEW
+  VERIFIED
+  ACTIVE_SEARCH
+  POTENTIAL_MATCH_FOUND
+  INTRODUCTION_SENT
+  FIRST_CALL_SCHEDULED
+  DATING
+  RELATIONSHIP
+  ENGAGED
+  MARRIED
+}
+
+enum MaritalStatus {
+  NEVER_MARRIED
+  DIVORCED
+  WIDOWED
+  AWAITING_DIVORCE
+}
+
+enum DietPreference {
+  VEGETARIAN
+  NON_VEGETARIAN
+  VEGAN
+  EGGETARIAN
+  JAIN
+}
+
+/// Used for both smoking and drinking preference.
+enum Frequency {
+  NEVER
+  OCCASIONALLY
+  SOCIALLY
+  REGULARLY
+}
+
+enum FamilyType {
+  NUCLEAR
+  JOINT
+}
+
+enum ManglikStatus {
+  YES
+  NO
+  PARTIAL
+  DONT_KNOW
+}
+
+enum WantKids {
+  YES
+  NO
+  MAYBE
+  OPEN
+}
+
+/// Tri-state preference for relocation / pets (Yes / No / Maybe).
+enum OpenPreference {
+  YES
+  NO
+  MAYBE
+}
+
+enum NoteCategory {
+  GENERAL
+  PREFERENCE
+  CONCERN
+  CALL_LOG
+  FAMILY
+  FEEDBACK
+  STRATEGY
+}
+
+enum TimelineEventType {
+  PROFILE_CREATED
+  VERIFICATION
+  STAGE_CHANGE
+  NOTE_ADDED
+  MATCH_GENERATED
+  INTRODUCTION_SENT
+  FEEDBACK_RECEIVED
+  CALL_SCHEDULED
+  STATUS_UPDATE
+}
+
+enum MatchStatus {
+  NEW
+  WAITING_REVIEW
+  SENT
+  AWAITING_FEEDBACK
+  ACCEPTED
+  REJECTED
+  ON_HOLD
+}
+
+enum FeedbackResponse {
+  INTERESTED
+  NOT_INTERESTED
+  NEED_MORE_TIME
+  DATE_SCHEDULED
+  FOLLOW_UP_NEEDED
+}
+
+enum FeedbackReason {
+  LOCATION_MISMATCH
+  LIFESTYLE_MISMATCH
+  TIMING
+  FAMILY_CONCERNS
+  NO_CHEMISTRY
+  OTHER
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────────────────────────────
+
+model Matchmaker {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  assignedCustomers Customer[] @relation("AssignedMatchmaker")
+  authoredNotes     Note[]
+}
+
+model Customer {
+  id String @id @default(cuid())
+
+  // ── Core ───────────────────────────────────────────────
+  firstName            String
+  lastName             String
+  gender               Gender
+  dateOfBirth          DateTime // age derived in app layer
+  country              String        @default("India")
+  city                 String
+  height               Int // centimeters
+  email                String        @unique
+  phone                String
+  emailVerified        Boolean       @default(false)
+  phoneVerified        Boolean       @default(false)
+  undergraduateCollege String
+  degree               String
+  income               Int // annual income in INR
+  currentCompany       String
+  designation          String
+  maritalStatus        MaritalStatus @default(NEVER_MARRIED)
+  languagesKnown       String[]
+  siblings             Int           @default(0)
+  religion             String
+  caste                String?
+  wantKids             WantKids       @default(OPEN)
+  openToRelocate       OpenPreference @default(MAYBE)
+  openToPets           OpenPreference @default(MAYBE)
+
+  // ── Indian matchmaking ─────────────────────────────────
+  motherTongue            String
+  dietPreference          DietPreference @default(VEGETARIAN)
+  smokingPreference       Frequency      @default(NEVER)
+  drinkingPreference      Frequency      @default(NEVER)
+  familyType              FamilyType     @default(NUCLEAR)
+  manglik                 ManglikStatus  @default(DONT_KNOW)
+  educationPreference     String? // e.g. "Bachelors+", "Masters+"
+  partnerAgePreferenceMin Int?
+  partnerAgePreferenceMax Int?
+  preferredCities         String[]
+  relationshipGoals       String // e.g. "Marriage within 1 year"
+  familyExpectations      String?
+  lifestylePreferences    String[] // e.g. ["Fitness","Travel"]
+  coreValues              String[] // e.g. ["Honesty","Ambition"]
+  nonNegotiables          String[] // e.g. ["Non-smoker"]
+
+  // ── Journey ────────────────────────────────────────────
+  currentStage         FunnelStage @default(PROFILE_REVIEW)
+  assignedMatchmakerId String?
+  assignedMatchmaker   Matchmaker? @relation("AssignedMatchmaker", fields: [assignedMatchmakerId], references: [id])
+  lastInteractionDate  DateTime?
+  matchActivityScore   Int         @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes              Note[]
+  timeline           TimelineEvent[]
+  matchesAsClient    Match[]         @relation("ClientMatches")
+  matchesAsCandidate Match[]         @relation("CandidateMatches")
+
+  @@index([gender])
+  @@index([currentStage])
+  @@index([city])
+  @@index([religion])
+  @@index([assignedMatchmakerId])
+  @@index([gender, currentStage])
+}
+
+model Note {
+  id         String       @id @default(cuid())
+  customerId String
+  customer   Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     Matchmaker   @relation(fields: [authorId], references: [id])
+  category   NoteCategory @default(GENERAL)
+  content    String
+  createdAt  DateTime     @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+model TimelineEvent {
+  id          String            @id @default(cuid())
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type        TimelineEventType
+  description String
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+model Match {
+  id            String      @id @default(cuid())
+  customerId    String
+  customer      Customer    @relation("ClientMatches", fields: [customerId], references: [id], onDelete: Cascade)
+  candidateId   String
+  candidate     Customer    @relation("CandidateMatches", fields: [candidateId], references: [id], onDelete: Cascade)
+  overallScore  Int
+  breakdown     Json // { age: 92, location: 70, ... } per-dimension 0-100
+  strengths     String[]
+  concerns      String[]
+  status        MatchStatus @default(NEW)
+  aiExplanation String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  feedback MatchFeedback[]
+
+  @@unique([customerId, candidateId])
+  @@index([customerId, overallScore])
+  @@index([status])
+}
+
+model MatchFeedback {
+  id        String           @id @default(cuid())
+  matchId   String
+  match     Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  response  FeedbackResponse
+  reason    FeedbackReason?
+  notes     String?
+  createdAt DateTime         @default(now())
+
+  @@index([matchId])
+}

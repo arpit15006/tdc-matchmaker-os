@@ -17,7 +17,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm text-ink">{empty ? '—' : value}</dd>
+      <dd className="mt-0.5 break-words text-sm text-ink">{empty ? '—' : value}</dd>
     </div>
   );
 }
@@ -39,7 +39,7 @@ function Section({
         </span>
         <h3 className="font-serif text-lg text-ink">{title}</h3>
       </div>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">{children}</dl>
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 md:grid-cols-3">{children}</dl>
     </Card>
   );
 }

@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Outlet, useLocation } from 'react-router-dom';
+import { MobileNav } from './MobileNav';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
@@ -13,7 +14,7 @@ export function AppShell() {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
-        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-6 py-8">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-6 pt-8 pb-24 lg:pb-8">
           <div className="mx-auto max-w-7xl">
             {/*
               Keyed enter-only transition. We intentionally avoid
@@ -32,6 +33,7 @@ export function AppShell() {
           </div>
         </main>
       </div>
+      <MobileNav />
     </div>
   );
 }

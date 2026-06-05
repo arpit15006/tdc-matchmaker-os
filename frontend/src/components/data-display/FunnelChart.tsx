@@ -16,13 +16,14 @@ const TONE_GRAD: Record<string, [string, string]> = {
 export function FunnelChart({ stages }: { stages: FunnelStageCount[] }) {
   const navigate = useNavigate();
   const max = Math.max(1, ...stages.map((s) => s.count));
+  const total = stages.reduce((sum, s) => sum + s.count, 0);
 
   return (
     <div className="space-y-2">
       {stages.map((s, i) => {
         const widthPct = Math.max(5, (s.count / max) * 100);
-        const prev = stages[i - 1];
-        const conversion = prev && prev.count > 0 ? Math.round((s.count / prev.count) * 100) : null;
+        // Share of the full roster currently sitting in this stage (always ≤ 100%).
+        const share = total > 0 ? Math.round((s.count / total) * 100) : null;
         const [from, to] = TONE_GRAD[STAGE_TONE[s.stage]] ?? TONE_GRAD.plum;
 
         return (
@@ -55,7 +56,7 @@ export function FunnelChart({ stages }: { stages: FunnelStageCount[] }) {
               </span>
             </div>
             <span className="w-12 shrink-0 text-right text-xs font-medium text-ink-muted">
-              {conversion != null ? `${conversion}%` : '—'}
+              {share != null ? `${share}%` : '—'}
             </span>
           </button>
         );
@@ -64,7 +65,7 @@ export function FunnelChart({ stages }: { stages: FunnelStageCount[] }) {
         <span className="inline-block h-2 w-2 rounded-full bg-rose" /> early
         <span className="ml-2 inline-block h-2 w-2 rounded-full bg-gold" /> mid
         <span className="ml-2 inline-block h-2 w-2 rounded-full bg-sage" /> committed
-        <span className="ml-3">· right column = conversion from prior stage</span>
+        <span className="ml-3">· right column = share of roster</span>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ This is **not** a dating app, not Tinder, not a matrimonial marketplace. It is t
 - [Tech Choices](#tech-choices)
 - [Matching Logic](#matching-logic)
 - [AI Usage](#ai-usage)
+- [Testing](#testing)
 - [Business Assumptions](#business-assumptions)
 - [Design Philosophy](#design-philosophy)
 - [Architecture](#architecture)
@@ -120,6 +121,37 @@ If `GROQ_API_KEY` is absent, the app still boots and runs — only the AI endpoi
 
 ---
 
+## Testing
+
+The matching engine is the core of the product, so it's covered by a fast, DB-free
+unit suite ([Vitest](https://vitest.dev)) that pins the assignment's exact rules:
+
+```bash
+cd backend && npm test
+```
+
+```
+✓ src/services/compatibility/__tests__/scorers.test.ts       (11 tests)
+✓ src/services/compatibility/__tests__/compatibility.test.ts  (9 tests)
+  Test Files  2 passed (2)
+       Tests  20 passed (20)
+```
+
+Coverage highlights — every claim the matching logic makes is asserted:
+
+- **Male-client rules** — younger candidate out-scores older; a 0–6yr-younger
+  candidate is perfect; shorter candidate nudged up; lower-income candidate
+  preferred over higher-income.
+- **Female-client rules** — comparable-or-higher income rewarded (the inverse of
+  the male rule), and profession/values/relocation carry more weight.
+- **Children alignment** — `YES` vs `NO` is a hard clash; exact match is perfect.
+- **Aggregation** — both gender weight tables sum to exactly `1.00`; scores and the
+  12-dimension breakdown stay within `0..100`; identical inputs are deterministic.
+- **Ranking** — opposite-gender only, excludes self, sorted by score desc, capped at
+  Top 10, with ties broken deterministically by candidate id.
+
+---
+
 ## Business Assumptions
 
 - **One matchmaker, many clients.** The demo models a single matchmaker who owns the whole roster. The schema already supports many matchmakers (`assignedMatchmakerId`).
@@ -127,6 +159,7 @@ If `GROQ_API_KEY` is absent, the app still boots and runs — only the AI endpoi
 - **Opposite-gender matching.** The candidate pool for a client is the opposite gender; already-married/engaged profiles are excluded from new recommendations.
 - **The funnel is the source of truth** for a client's journey; KPIs and success-rate are derived from stage counts. "Success" = reaching Relationship / Engaged / Married; the denominator is everyone past Introduction Sent.
 - **AI assists, never decides.** Scores and rankings are deterministic and explainable; AI only adds language and insight on top.
+- **"Send Match" is a simulated workflow, not a live email.** Per the brief ("trigger mock email or show modal/toast"), sending an introduction is modelled end-to-end in the database — it advances the client's stage, stores the chosen intro copy, bumps activity, and writes an `INTRODUCTION_SENT` timeline event — and surfaces a success state in the UI. Wiring a real provider (Resend/SES) is a one-function swap in `matches.service.ts`.
 
 ---
 
@@ -221,6 +254,6 @@ A [`frontend/vercel.json`](frontend/vercel.json) (Vite preset, SPA rewrites) is 
 - **Real-time** updates (websockets) for the queue and timeline.
 - **Calendar & messaging** integrations for the introduction / first-call workflow.
 - **Audit log & analytics** — cohort success rates, time-in-stage, matchmaker performance.
-- **Test suite** — unit tests for every compatibility scorer and snapshot tests for ranking determinism.
+- **Expanded test coverage** — extend the existing engine tests to the API routes (supertest) and a few frontend component tests.
 - **Code-splitting** the frontend bundle by route.
 ```

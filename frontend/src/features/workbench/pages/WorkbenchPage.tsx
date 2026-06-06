@@ -103,7 +103,7 @@ export function WorkbenchPage() {
 
       {/* Two-column: tabs + AI insights rail */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="min-w-0 lg:col-span-2">
           <Tabs tabs={TABS} active={tab} onChange={setTab} />
           <div className="mt-5">
             <AnimatePresence mode="wait">
@@ -123,7 +123,7 @@ export function WorkbenchPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="min-w-0 lg:col-span-1">
           <div className="mb-2 flex items-center gap-2 text-sm text-ink-soft lg:hidden">
             <Sparkles className="h-4 w-4 text-gold-deep" /> AI Insights
           </div>
